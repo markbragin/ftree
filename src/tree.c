@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "bool.h"
 #include "colors.h"
@@ -68,9 +69,10 @@ static void dirwalk(const char *dirname, unsigned level)
     struct stat filestat;
     DynamicArray files;
     const char *color;
-    char size_str[32];
+    char size_str[32] = {0}, linkpath[MAX_PATH_LEN] = {0};
     int i, rc;
 
+    /* Read dir and print its name */
     dirp = opendir(dirname);
     if (!dirp) {
         printf("%s%s%s%s [error opening dir]\n", CUR_PREFIX,
@@ -81,51 +83,74 @@ static void dirwalk(const char *dirname, unsigned level)
     printf("%s%s%s%s\n", CUR_PREFIX, (OPTIONS.nocolor) ? "" : DIR_COLOR,
            filename(dirname), (OPTIONS.nocolor) ? "" : NO_COLOR);
 
-    if (OPTIONS.depth > 0 && level >= OPTIONS.depth)
+    /* Return if max depth is set and exceeded */
+    if (OPTIONS.depth > 0 && level >= OPTIONS.depth) {
+        closedir(dirp);
         return;
+    }
 
+    /* Read all filenames and sort them */
     files = da_create(0);
     while ((dir = readdir(dirp)))
         da_push(&files, dir->d_name);
-
     da_sort(&files);
+
+    /* Print every filename */
     for (i = 0; i < files.size; i++) {
+
+        /* Skip . and .. to avoid cycles */
         if (strcmp(files.items[i], ".") == 0
             || strcmp(files.items[i], "..") == 0)
             continue;
 
+        /* Skip dotfiles if 'all' option is not set */
         if (files.items[i][0] == '.' && !OPTIONS.all)
             continue;
 
         append_filename(files.items[i]);
         append_prefix(i == files.size - 1, OPTIONS.ascii);
 
+        /* No symlinks in windows */
 #if defined(_WIN32) || defined(_WIN64)
         rc = stat(CUR_PATH, &filestat);
 #else
         rc = lstat(CUR_PATH, &filestat);
 #endif
+
         if (rc == 0 && S_ISDIR(filestat.st_mode)) {
             dirwalk(CUR_PATH, level + 1);
         } else if (!OPTIONS.dironly) {
-            if (filestat.st_mode & S_IXUSR)
-                color = EXE_COLOR;
-#if !defined(_WIN32) && !defined(_WIN64)
-            else if (S_ISLNK(filestat.st_mode))
-                color = LINK_COLOR;
-#endif
-            else
-                color = REG_COLOR;
-
+            /* Get filesize if options is set */
             if (OPTIONS.human) {
                 bytes_to_human(filestat.st_size, size_str);
             } else if (OPTIONS.size) {
                 sprintf(size_str, "[%ld]", filestat.st_size);
             }
 
-            printf("%s%s%s%s %s\n", CUR_PREFIX, (OPTIONS.nocolor) ? "" : color,
-                   files.items[i], (OPTIONS.nocolor) ? "" : NO_COLOR,
-                   (OPTIONS.human || OPTIONS.size) ? size_str : "");
+            /* Set color for executable */
+            if (filestat.st_mode & S_IXUSR)
+                color = EXE_COLOR;
+
+#if !defined(_WIN32) && !defined(_WIN64)
+            /* Set color for symlink and read the content of symlink */
+            if (S_ISLNK(filestat.st_mode)) {
+                color = LINK_COLOR;
+                rc = readlink(CUR_PATH, linkpath, MAX_PATH_LEN - 1);
+                if (rc != -1)
+                    linkpath[rc] = '\0';
+            }
+#endif
+            else
+                color = REG_COLOR;
+
+            printf("%s%s%s%s %s -> %s\n", CUR_PREFIX,
+                   (OPTIONS.nocolor) ? "" : color, files.items[i],
+                   (OPTIONS.nocolor) ? "" : NO_COLOR,
+                   (OPTIONS.human || OPTIONS.size) ? size_str : "\b",
+                   (strlen(linkpath) != 0) ? linkpath : "\b\b\b\b    ");
+
+            /* Reset linkpath */
+            linkpath[0] = '\0';
         }
         remove_filename();
         remove_prefix();
