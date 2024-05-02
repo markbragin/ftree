@@ -68,7 +68,7 @@ static void dirwalk(const char *dirname, unsigned options)
     DynamicArray files;
     const char *color;
     char size_str[32];
-    int i;
+    int i, rc;
 
     dirp = opendir(dirname);
     if (!dirp) {
@@ -96,11 +96,18 @@ static void dirwalk(const char *dirname, unsigned options)
         append_filename(files.items[i]);
         append_prefix(i == files.size - 1, (options & T_ASCII));
 
-        if (lstat(CUR_PATH, &filestat) == 0 && S_ISDIR(filestat.st_mode)) {
+#if defined(_WIN32) || defined(_WIN64)
+        rc = stat(CUR_PATH, &filestat);
+#else
+        rc = lstat(CUR_PATH, &filestat);
+#endif
+        if (rc == 0 && S_ISDIR(filestat.st_mode)) {
             dirwalk(CUR_PATH, options);
         } else if (!(options & T_DIRONLY)) {
+#if !defined(_WIN32) || !defined(_WIN64)
             if (S_ISLNK(filestat.st_mode))
                 color = LINK_COLOR;
+#endif
             else if (filestat.st_mode & S_IXUSR)
                 color = EXE_COLOR;
             else
