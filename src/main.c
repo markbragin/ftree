@@ -1,26 +1,22 @@
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-
+#include "argparser.h"
+#include "dynamic_array.h"
 #include "tree.h"
 
 int main(int argc, char **argv)
 {
-    struct stat statbuf;
+    UserInput ui;
+    int i;
 
-    if (argc == 1) {
-        print_tree(".");
-    } else {
-        if (stat(argv[1], &statbuf) == -1) {
-            fprintf(stderr, "%s\n", strerror(errno));
-        } else if (!S_ISDIR(statbuf.st_mode)) {
-            fprintf(stderr, "%s is not a directory\n", argv[1]);
-            exit(1);
-        } else {
-            print_tree(argv[1]);
-        }
+    ui = parse_args(argc, argv);
+
+    if (ui.dirnames.size == 0) {
+        da_push(&ui.dirnames, ".");
     }
+
+    for (i = 0; i < ui.dirnames.size; i++) {
+        print_tree(ui.dirnames.items[i], ui.options);
+    }
+
+    da_destroy(&ui.dirnames);
     return 0;
 }

@@ -35,7 +35,7 @@ static void remove_filename(void);
 static void append_filename(const char *filename);
 
 /* Prints files in given dir recursively */
-static void dirwalk(const char *dirname);
+static void dirwalk(const char *dirname, unsigned options);
 
 /* Appends subprefix to the end of current prefix */
 static void append_prefix(bool last);
@@ -46,28 +46,34 @@ static void remove_prefix(void);
 /* Check if string ends with given substring */
 static bool end_with(const char *str, const char *substr);
 
-void print_tree(const char *dirname)
+/* Converts filesize to human readable string */
+static void bytes_to_human(long size, char *str);
+
+void print_tree(const char *dirname, unsigned options)
 {
     strcpy(CUR_PATH, dirname);
-    dirwalk(CUR_PATH);
+    dirwalk(CUR_PATH, options);
 }
 
-static void dirwalk(const char *dirname)
+static void dirwalk(const char *dirname, unsigned options)
 {
     DIR *dirp;
     struct dirent *dir;
     struct stat filestat;
     DynamicArray files;
     const char *color;
+    char size_str[32];
     int i;
 
     dirp = opendir(dirname);
     if (!dirp) {
-        printf("%s%s%s%s [error opening dir]\n", CUR_PREFIX, DIR_COLOR,
-            filename(dirname), NO_COLOR);
+        printf("%s%s%s%s [error opening dir]\n", CUR_PREFIX,
+               (options & T_NOCOL) ? "" : DIR_COLOR, filename(dirname),
+               (options & T_NOCOL) ? "" : NO_COLOR);
         return;
     }
-    printf("%s%s%s%s\n", CUR_PREFIX, DIR_COLOR, filename(dirname), NO_COLOR);
+    printf("%s%s%s%s\n", CUR_PREFIX, (options & T_NOCOL) ? "" : DIR_COLOR,
+           filename(dirname), (options & T_NOCOL) ? "" : NO_COLOR);
 
     files = da_create(0);
     while ((dir = readdir(dirp)))
@@ -76,22 +82,35 @@ static void dirwalk(const char *dirname)
     da_sort(&files);
     for (i = 0; i < files.size; i++) {
         if (strcmp(files.items[i], ".") == 0
-            || strcmp(files.items[i], "..") == 0 || files.items[i][0] == '.')
+            || strcmp(files.items[i], "..") == 0)
+            continue;
+
+        if (files.items[i][0] == '.' && !(options & T_ALL))
             continue;
 
         append_filename(files.items[i]);
         append_prefix(i == files.size - 1);
 
         if (lstat(CUR_PATH, &filestat) == 0 && S_ISDIR(filestat.st_mode)) {
-            dirwalk(CUR_PATH);
-        } else {
+            dirwalk(CUR_PATH, options);
+        } else if (!(options & T_DIRONLY)) {
             if (S_ISLNK(filestat.st_mode))
                 color = LINK_COLOR;
             else if (filestat.st_mode & S_IXUSR)
                 color = EXE_COLOR;
             else
                 color = REG_COLOR;
-            printf("%s%s%s%s\n", CUR_PREFIX, color, files.items[i], COLOR_OFF);
+
+            if (options & T_HUMAN) {
+                bytes_to_human(filestat.st_size, size_str);
+            } else if (options & T_SIZE) {
+                sprintf(size_str, "[%ld]", filestat.st_size);
+            }
+
+            printf("%s%s%s%s %s\n", CUR_PREFIX,
+                   (options & T_NOCOL) ? "" : color, files.items[i],
+                   (options & T_NOCOL) ? "" : NO_COLOR,
+                   (options & (T_SIZE | T_HUMAN)) ? size_str : "");
         }
         remove_filename();
         remove_prefix();
@@ -119,7 +138,7 @@ static void append_filename(const char *filename)
         fprintf(stderr, "Not enough space for prefix\n");
         abort();
     }
-    CUR_PATH[len] = SLASH;
+    CUR_PATH[len]     = SLASH;
     CUR_PATH[len + 1] = '\0';
     strcat(CUR_PATH, filename);
 }
@@ -181,4 +200,19 @@ static bool end_with(const char *str, const char *substr)
     if (sublen > len)
         return false;
     return strcmp(&str[len - sublen], substr) == 0;
+}
+
+static void bytes_to_human(long size, char *str)
+{
+    double dsize;
+
+    if ((dsize = (double)size / 1024 / 1024 / 1024) > 1) {
+        sprintf(str, "[%.1fG]", dsize);
+    } else if ((dsize = (double)size / 1024 / 1024) > 1) {
+        sprintf(str, "[%.1fM]", dsize);
+    } else if ((dsize = (double)size / 1024) > 1) {
+        sprintf(str, "[%.1fK]", dsize);
+    } else {
+        sprintf(str, "[%ld]", size);
+    }
 }

@@ -9,7 +9,7 @@ BINARY ?= ftree
 BUILD_DIR ?= build
 SOURCE_DIR = src
 
-SOURCES = src/main.c src/tree.c src/dynamic_array.c
+SOURCES = src/main.c src/tree.c src/dynamic_array.c src/argparser.c
 OBJECTS := $(SOURCES:%.c=$(BUILD_DIR)/%.o)
 
 INCLUDE_DIRS = src
