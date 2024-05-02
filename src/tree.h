@@ -9,7 +9,8 @@ typedef enum {
     T_SIZE    = (1 << 1),
     T_HUMAN   = (1 << 2),
     T_ALL     = (1 << 3),
-    T_DIRONLY = (1 << 4)
+    T_DIRONLY = (1 << 4),
+    T_ASCII   = (1 << 5)
 } Options;
 
 /* Prints files in given dir recursively */

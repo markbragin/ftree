@@ -23,6 +23,8 @@ UserInput parse_args(int argc, char **argv)
             ui.options |= T_ALL;
         } else if (strcmp(argv[i], "-d") == 0) {
             ui.options |= T_DIRONLY;
+        } else if (strcmp(argv[i], "-A") == 0) {
+            ui.options |= T_ASCII;
         } else if (argv[i][0] != '-') {
             da_push(&ui.dirnames, argv[i]);
         }

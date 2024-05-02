@@ -11,9 +11,14 @@
 
 static const char SLASH = '/';
 
-static const char SUBPREFIX_REG[]   = "├── ";
-static const char SUBPREFIX_END[]   = "└── ";
-static const char SUBPREFIX_PIPE[]  = "│   ";
+static const char SUBPREFIX_REG[]  = "├── ";
+static const char SUBPREFIX_END[]  = "└── ";
+static const char SUBPREFIX_PIPE[] = "│   ";
+
+static const char SUBPREFIX_REG_ASCII[]  = "|-- ";
+static const char SUBPREFIX_END_ASCII[]  = "'-- ";
+static const char SUBPREFIX_PIPE_ASCII[] = "|   ";
+
 static const char SUBPREFIX_EMPTY[] = "    ";
 
 static const char *NO_COLOR   = COLOR_OFF;
@@ -38,7 +43,7 @@ static void append_filename(const char *filename);
 static void dirwalk(const char *dirname, unsigned options);
 
 /* Appends subprefix to the end of current prefix */
-static void append_prefix(bool last);
+static void append_prefix(bool last, bool ascii);
 
 /* Removes subprefix from the current prefix */
 static void remove_prefix(void);
@@ -89,7 +94,7 @@ static void dirwalk(const char *dirname, unsigned options)
             continue;
 
         append_filename(files.items[i]);
-        append_prefix(i == files.size - 1);
+        append_prefix(i == files.size - 1, (options & T_ASCII));
 
         if (lstat(CUR_PATH, &filestat) == 0 && S_ISDIR(filestat.st_mode)) {
             dirwalk(CUR_PATH, options);
@@ -154,23 +159,43 @@ const char *filename(const char *path)
     return s == path ? s : s + 1;
 }
 
-static void append_prefix(bool end)
+/* Boilerplace. Fix it later */
+static void append_prefix(bool end, bool ascii)
 {
     unsigned len;
 
     len = strlen(CUR_PREFIX);
-    if (len + sizeof(SUBPREFIX_REG) > MAX_PATH_LEN) {
-        fprintf(stderr, "Not enough space for prefix\n");
-        abort();
+    if (ascii) {
+        if (len + sizeof(SUBPREFIX_REG_ASCII) > MAX_PATH_LEN) {
+            fprintf(stderr, "Not enough space for prefix\n");
+            abort();
+        }
+        if (end_with(CUR_PREFIX, SUBPREFIX_REG_ASCII)) {
+            remove_prefix();
+            strcat(&CUR_PREFIX[len - sizeof(SUBPREFIX_REG_ASCII) + 1],
+                   SUBPREFIX_PIPE_ASCII);
+        } else if (end_with(CUR_PREFIX, SUBPREFIX_END_ASCII)) {
+            remove_prefix();
+            strcat(&CUR_PREFIX[len - sizeof(SUBPREFIX_END_ASCII) + 1],
+                   SUBPREFIX_EMPTY);
+        }
+        strcat(CUR_PREFIX, end ? SUBPREFIX_END_ASCII : SUBPREFIX_REG_ASCII);
+    } else {
+        if (len + sizeof(SUBPREFIX_REG) > MAX_PATH_LEN) {
+            fprintf(stderr, "Not enough space for prefix\n");
+            abort();
+        }
+        if (end_with(CUR_PREFIX, SUBPREFIX_REG)) {
+            remove_prefix();
+            strcat(&CUR_PREFIX[len - sizeof(SUBPREFIX_REG) + 1],
+                   SUBPREFIX_PIPE);
+        } else if (end_with(CUR_PREFIX, SUBPREFIX_END)) {
+            remove_prefix();
+            strcat(&CUR_PREFIX[len - sizeof(SUBPREFIX_END) + 1],
+                   SUBPREFIX_EMPTY);
+        }
+        strcat(CUR_PREFIX, end ? SUBPREFIX_END : SUBPREFIX_REG);
     }
-    if (end_with(CUR_PREFIX, SUBPREFIX_REG)) {
-        remove_prefix();
-        strcat(&CUR_PREFIX[len - sizeof(SUBPREFIX_REG) + 1], SUBPREFIX_PIPE);
-    } else if (end_with(CUR_PREFIX, SUBPREFIX_END)) {
-        remove_prefix();
-        strcat(&CUR_PREFIX[len - sizeof(SUBPREFIX_END) + 1], SUBPREFIX_EMPTY);
-    }
-    strcat(CUR_PREFIX, end ? SUBPREFIX_END : SUBPREFIX_REG);
 }
 
 static void remove_prefix(void)
@@ -187,6 +212,12 @@ static void remove_prefix(void)
         CUR_PREFIX[len - sizeof(SUBPREFIX_END) + 1] = '\0';
     else if ((end_with(CUR_PREFIX, SUBPREFIX_PIPE)))
         CUR_PREFIX[len - sizeof(SUBPREFIX_PIPE) + 1] = '\0';
+    else if ((end_with(CUR_PREFIX, SUBPREFIX_REG_ASCII)))
+        CUR_PREFIX[len - sizeof(SUBPREFIX_REG_ASCII) + 1] = '\0';
+    else if ((end_with(CUR_PREFIX, SUBPREFIX_END_ASCII)))
+        CUR_PREFIX[len - sizeof(SUBPREFIX_END_ASCII) + 1] = '\0';
+    else if ((end_with(CUR_PREFIX, SUBPREFIX_PIPE_ASCII)))
+        CUR_PREFIX[len - sizeof(SUBPREFIX_PIPE_ASCII) + 1] = '\0';
     else if ((end_with(CUR_PREFIX, SUBPREFIX_EMPTY)))
         CUR_PREFIX[len - sizeof(SUBPREFIX_EMPTY) + 1] = '\0';
 }
