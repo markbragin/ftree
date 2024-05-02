@@ -4,19 +4,19 @@
 
 int main(int argc, char **argv)
 {
-    UserInput ui;
+    DynamicArray dirnames;
     int i;
 
-    ui = parse_args(argc, argv);
+    dirnames = parse_args(argc, argv, &OPTIONS);
 
-    if (ui.dirnames.size == 0) {
-        da_push(&ui.dirnames, ".");
+    if (dirnames.size == 0) {
+        da_push(&dirnames, ".");
     }
 
-    for (i = 0; i < ui.dirnames.size; i++) {
-        print_tree(ui.dirnames.items[i], ui.options);
+    for (i = 0; i < dirnames.size; i++) {
+        print_tree(dirnames.items[i]);
     }
 
-    da_destroy(&ui.dirnames);
+    da_destroy(&dirnames);
     return 0;
 }

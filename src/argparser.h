@@ -2,15 +2,11 @@
 #define _ARG_PARSER_H_
 
 #include "dynamic_array.h"
+#include "tree.h"
 
-typedef struct {
-    unsigned options;
-    DynamicArray dirnames;
-} UserInput;
-
-/* Returns struct with dynamic array dirnames. Caller must destroy id
- * via da_destroy. */
-UserInput parse_args(int argc, char **argv);
+/* Returns dynamic array of dirnames and sets options for the given pointer.
+ * Caller must destroy it via da_destroy. */
+DynamicArray parse_args(int argc, char **argv, Options *opts);
 
 /* Prints usage to stdout */
 void usage(void);

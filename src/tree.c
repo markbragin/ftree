@@ -30,6 +30,9 @@ static const char *EXE_COLOR  = GREEN_BOLD;
 static char CUR_PATH[MAX_PATH_LEN];
 static char CUR_PREFIX[MAX_PATH_LEN];
 
+/* Global struct for holding options */
+Options OPTIONS;
+
 /* Returns const pointer to filename in given path */
 static const char *filename(const char *path);
 
@@ -40,7 +43,7 @@ static void remove_filename(void);
 static void append_filename(const char *filename);
 
 /* Prints files in given dir recursively */
-static void dirwalk(const char *dirname, unsigned options);
+static void dirwalk(const char *dirname, unsigned level);
 
 /* Appends subprefix to the end of current prefix */
 static void append_prefix(bool last, bool ascii);
@@ -54,13 +57,13 @@ static bool end_with(const char *str, const char *substr);
 /* Converts filesize to human readable string */
 static void bytes_to_human(long size, char *str);
 
-void print_tree(const char *dirname, unsigned options)
+void print_tree(const char *dirname)
 {
     strcpy(CUR_PATH, dirname);
-    dirwalk(CUR_PATH, options);
+    dirwalk(CUR_PATH, 0);
 }
 
-static void dirwalk(const char *dirname, unsigned options)
+static void dirwalk(const char *dirname, unsigned level)
 {
     DIR *dirp;
     struct dirent *dir;
@@ -73,12 +76,15 @@ static void dirwalk(const char *dirname, unsigned options)
     dirp = opendir(dirname);
     if (!dirp) {
         printf("%s%s%s%s [error opening dir]\n", CUR_PREFIX,
-               (options & T_NOCOL) ? "" : DIR_COLOR, filename(dirname),
-               (options & T_NOCOL) ? "" : NO_COLOR);
+               (OPTIONS.nocolor) ? "" : DIR_COLOR, filename(dirname),
+               (OPTIONS.nocolor) ? "" : NO_COLOR);
         return;
     }
-    printf("%s%s%s%s\n", CUR_PREFIX, (options & T_NOCOL) ? "" : DIR_COLOR,
-           filename(dirname), (options & T_NOCOL) ? "" : NO_COLOR);
+    printf("%s%s%s%s\n", CUR_PREFIX, (OPTIONS.nocolor) ? "" : DIR_COLOR,
+           filename(dirname), (OPTIONS.nocolor) ? "" : NO_COLOR);
+
+    if (OPTIONS.depth > 0 && level >= OPTIONS.depth)
+        return;
 
     files = da_create(0);
     while ((dir = readdir(dirp)))
@@ -90,11 +96,11 @@ static void dirwalk(const char *dirname, unsigned options)
             || strcmp(files.items[i], "..") == 0)
             continue;
 
-        if (files.items[i][0] == '.' && !(options & T_ALL))
+        if (files.items[i][0] == '.' && !OPTIONS.all)
             continue;
 
         append_filename(files.items[i]);
-        append_prefix(i == files.size - 1, (options & T_ASCII));
+        append_prefix(i == files.size - 1, OPTIONS.ascii);
 
 #if defined(_WIN32) || defined(_WIN64)
         rc = stat(CUR_PATH, &filestat);
@@ -102,8 +108,8 @@ static void dirwalk(const char *dirname, unsigned options)
         rc = lstat(CUR_PATH, &filestat);
 #endif
         if (rc == 0 && S_ISDIR(filestat.st_mode)) {
-            dirwalk(CUR_PATH, options);
-        } else if (!(options & T_DIRONLY)) {
+            dirwalk(CUR_PATH, level + 1);
+        } else if (!OPTIONS.dironly) {
             if (filestat.st_mode & S_IXUSR)
                 color = EXE_COLOR;
 #if !defined(_WIN32) && !defined(_WIN64)
@@ -113,16 +119,15 @@ static void dirwalk(const char *dirname, unsigned options)
             else
                 color = REG_COLOR;
 
-            if (options & T_HUMAN) {
+            if (OPTIONS.human) {
                 bytes_to_human(filestat.st_size, size_str);
-            } else if (options & T_SIZE) {
+            } else if (OPTIONS.size) {
                 sprintf(size_str, "[%ld]", filestat.st_size);
             }
 
-            printf("%s%s%s%s %s\n", CUR_PREFIX,
-                   (options & T_NOCOL) ? "" : color, files.items[i],
-                   (options & T_NOCOL) ? "" : NO_COLOR,
-                   (options & (T_SIZE | T_HUMAN)) ? size_str : "");
+            printf("%s%s%s%s %s\n", CUR_PREFIX, (OPTIONS.nocolor) ? "" : color,
+                   files.items[i], (OPTIONS.nocolor) ? "" : NO_COLOR,
+                   (OPTIONS.human || OPTIONS.size) ? size_str : "");
         }
         remove_filename();
         remove_prefix();
