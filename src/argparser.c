@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "argparser.h"
@@ -25,9 +27,33 @@ UserInput parse_args(int argc, char **argv)
             ui.options |= T_DIRONLY;
         } else if (strcmp(argv[i], "-A") == 0) {
             ui.options |= T_ASCII;
+        } else if (strcmp(argv[i], "--help") == 0) {
+            usage();
+            exit(0);
         } else if (argv[i][0] != '-') {
             da_push(&ui.dirnames, argv[i]);
         }
     }
     return ui;
+}
+
+void usage(void)
+{
+    printf("USAGE:\n"
+           "    ftree [options] [directory ...]\n\n"
+           "OPTIONS:\n"
+           "    -a\n"
+           "        Print all files.\n"
+           "    -d\n"
+           "        Directories only.\n"
+           "    -s\n"
+           "        Print size of each file.\n"
+           "    -h\n"
+           "        Print size of each file in human readable format.\n"
+           "    -nc\n"
+           "        Turn off colored input.\n"
+           "    -A\n"
+           "        Use ASCII characters for tree structure.\n"
+           "    --help\n"
+           "        Print this help message.\n");
 }

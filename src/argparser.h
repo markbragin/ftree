@@ -12,4 +12,7 @@ typedef struct {
  * via da_destroy. */
 UserInput parse_args(int argc, char **argv);
 
+/* Prints usage to stdout */
+void usage(void);
+
 #endif
