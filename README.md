@@ -2,22 +2,36 @@
 
 Utility for printing filesystem as a tree.
 
-## Options
+## Usage
 
-- `-a` - print all files
-- `-d` - directory only
-- `-s` - print the size of each file
-- `-h` - print size of file in human readable format
-- `-nc` - turn off colored output
-- `-A` - use only ASCII characters in output
+```
+USAGE:
+    ftree [options] [directory ...]
+
+OPTIONS:
+    -a
+        Print all files.
+    -d
+        Directories only.
+    -s
+        Print size of each file.
+    -h
+        Print size of each file in human readable format.
+    -nc
+        Turn off colored input.
+    -A
+        Use ASCII characters for tree structure.
+    --help
+        Print this help message.
+```
 
 ## Installation
 
-### Using `make`:
+### Using `make`
 
 `make clean && make release`
 
-### Using `cmake` (+make):
+### Using `cmake` (+make)
 
 ```
 mkdir build
