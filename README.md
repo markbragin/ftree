@@ -13,14 +13,16 @@ OPTIONS:
         Print all files.
     -d
         Directories only.
-    -s
-        Print size of each file.
     -h
         Print size of each file in human readable format.
     -nc
         Turn off colored input.
+    -s
+        Print size of each file.
     -A
         Use ASCII characters for tree structure.
+    -L level
+        Set maximum depth of the tree.
     --help
         Print this help message.
 ```
