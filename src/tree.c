@@ -104,12 +104,12 @@ static void dirwalk(const char *dirname, unsigned options)
         if (rc == 0 && S_ISDIR(filestat.st_mode)) {
             dirwalk(CUR_PATH, options);
         } else if (!(options & T_DIRONLY)) {
-#if !defined(_WIN32) || !defined(_WIN64)
-            if (S_ISLNK(filestat.st_mode))
+            if (filestat.st_mode & S_IXUSR)
+                color = EXE_COLOR;
+#if !defined(_WIN32) && !defined(_WIN64)
+            else if (S_ISLNK(filestat.st_mode))
                 color = LINK_COLOR;
 #endif
-            else if (filestat.st_mode & S_IXUSR)
-                color = EXE_COLOR;
             else
                 color = REG_COLOR;
 
