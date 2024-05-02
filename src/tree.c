@@ -9,8 +9,6 @@
 #include "dynamic_array.h"
 #include "tree.h"
 
-static const char SLASH = '/';
-
 static const char SUBPREFIX_REG[]  = "├── ";
 static const char SUBPREFIX_END[]  = "└── ";
 static const char SUBPREFIX_PIPE[] = "│   ";
@@ -141,7 +139,7 @@ static void remove_filename(void)
     int i, s;
 
     for (i = 0, s = 0; CUR_PATH[i] != '\0'; i++)
-        if (CUR_PATH[i] == SLASH)
+        if (CUR_PATH[i] == '/')
             s = i;
     CUR_PATH[s] = '\0';
 }
@@ -155,7 +153,7 @@ static void append_filename(const char *filename)
         fprintf(stderr, "Not enough space for prefix\n");
         abort();
     }
-    CUR_PATH[len]     = SLASH;
+    CUR_PATH[len]     = '/';
     CUR_PATH[len + 1] = '\0';
     strcat(CUR_PATH, filename);
 }
@@ -166,7 +164,7 @@ const char *filename(const char *path)
     int i;
 
     for (i = 0, s = path; path[i] != '\0'; i++)
-        if (path[i] == SLASH)
+        if (path[i] == '/')
             s = &path[i];
     return s == path ? s : s + 1;
 }
