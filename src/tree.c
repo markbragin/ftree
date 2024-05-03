@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,10 +22,10 @@ static const char SUBPREFIX_PIPE_ASCII[] = "|   ";
 static const char SUBPREFIX_EMPTY[] = "    ";
 
 static const char *NO_COLOR   = COLOR_OFF;
-static const char *REG_COLOR  = COLOR_OFF;
 static const char *DIR_COLOR  = BLUE_BOLD;
 static const char *LINK_COLOR = CYAN_BOLD;
 static const char *EXE_COLOR  = GREEN_BOLD;
+/* static const char *REG_COLOR  = COLOR_OFF; */
 
 static char CUR_PATH[MAX_PATH_LEN];
 static char CUR_PREFIX[MAX_PATH_LEN];
@@ -56,6 +57,9 @@ static bool end_with(const char *str, const char *substr);
 /* Converts filesize to human readable string */
 static void bytes_to_human(long size, char *str);
 
+/* Colorizes string inplace */
+static void colorize(char *string, const char *color);
+
 void print_tree(const char *dirname)
 {
     strcpy(CUR_PATH, dirname);
@@ -69,19 +73,23 @@ static void dirwalk(const char *dirname, unsigned level)
     struct stat filestat;
     DynamicArray files;
     const char *color;
-    char size_str[32] = {0}, linkpath[MAX_PATH_LEN] = {0};
+    char size_str[32]           = {0};
+    char linkpath[MAX_PATH_LEN] = {0};
+    char fname[MAX_PATH_LEN]    = {0};
     int i, rc;
+
+    if (!OPTIONS.nocolor) {
+        strcpy(fname, filename(dirname));
+        colorize(fname, DIR_COLOR);
+    }
 
     /* Read dir and print its name */
     dirp = opendir(dirname);
     if (!dirp) {
-        printf("%s%s%s%s [error opening dir]\n", CUR_PREFIX,
-               (OPTIONS.nocolor) ? "" : DIR_COLOR, filename(dirname),
-               (OPTIONS.nocolor) ? "" : NO_COLOR);
+        printf("%s%s [error opening dir]\n", CUR_PREFIX, fname);
         return;
     }
-    printf("%s%s%s%s\n", CUR_PREFIX, (OPTIONS.nocolor) ? "" : DIR_COLOR,
-           filename(dirname), (OPTIONS.nocolor) ? "" : NO_COLOR);
+    printf("%s%s\n", CUR_PREFIX, fname);
 
     /* Return if max depth is set and exceeded */
     if (OPTIONS.depth > 0 && level >= OPTIONS.depth) {
@@ -97,17 +105,19 @@ static void dirwalk(const char *dirname, unsigned level)
 
     /* Print every filename */
     for (i = 0; i < files.size; i++) {
+        color = NULL;
+        strcpy(fname, files.items[i]);
 
         /* Skip . and .. to avoid cycles */
-        if (strcmp(files.items[i], ".") == 0
-            || strcmp(files.items[i], "..") == 0)
+        if (strcmp(fname, ".") == 0
+            || strcmp(fname, "..") == 0)
             continue;
 
         /* Skip dotfiles if 'all' option is not set */
-        if (files.items[i][0] == '.' && !OPTIONS.all)
+        if (fname[0] == '.' && !OPTIONS.all)
             continue;
 
-        append_filename(files.items[i]);
+        append_filename(fname);
         append_prefix(i == files.size - 1, OPTIONS.ascii);
 
         /* No symlinks in windows */
@@ -120,37 +130,46 @@ static void dirwalk(const char *dirname, unsigned level)
         if (rc == 0 && S_ISDIR(filestat.st_mode)) {
             dirwalk(CUR_PATH, level + 1);
         } else if (!OPTIONS.dironly) {
+
             /* Get filesize if options is set */
-            if (OPTIONS.human) {
+            if (OPTIONS.human)
                 bytes_to_human(filestat.st_size, size_str);
-            } else if (OPTIONS.size) {
+            else if (OPTIONS.size)
                 sprintf(size_str, "[%ld]", filestat.st_size);
-            }
 
             /* Set color for executable */
-            if (filestat.st_mode & S_IXUSR)
+            if (filestat.st_mode & S_IEXEC)
                 color = EXE_COLOR;
 
 #if !defined(_WIN32) && !defined(_WIN64)
             /* Set color for symlink and read the content of symlink */
             if (S_ISLNK(filestat.st_mode)) {
+                printf("Also there\n");
                 color = LINK_COLOR;
-                rc = readlink(CUR_PATH, linkpath, MAX_PATH_LEN - 1);
-                if (rc != -1)
+                rc    = readlink(CUR_PATH, linkpath, MAX_PATH_LEN - 1);
+                if (rc != -1) {
                     linkpath[rc] = '\0';
+                    rc           = stat(CUR_PATH, &filestat);
+                    if (rc == 0) {
+                        if (S_ISDIR(filestat.st_mode))
+                            colorize(linkpath, DIR_COLOR);
+                        else if (filestat.st_mode & S_IEXEC)
+                            colorize(linkpath, EXE_COLOR);
+                    }
+                }
             }
 #endif
-            else
-                color = REG_COLOR;
 
-            printf("%s%s%s%s %s -> %s\n", CUR_PREFIX,
-                   (OPTIONS.nocolor) ? "" : color, files.items[i],
-                   (OPTIONS.nocolor) ? "" : NO_COLOR,
+            if (color != NULL)
+                colorize(fname, color);
+
+            printf("%s%s %s -> %s\n", CUR_PREFIX, fname,
                    (OPTIONS.human || OPTIONS.size) ? size_str : "\b",
                    (strlen(linkpath) != 0) ? linkpath : "\b\b\b\b    ");
 
-            /* Reset linkpath */
+            /* Reset linkpath and fname */
             linkpath[0] = '\0';
+            fname[0]    = '\0';
         }
         remove_filename();
         remove_prefix();
@@ -281,4 +300,29 @@ static void bytes_to_human(long size, char *str)
     } else {
         sprintf(str, "[%ld]", size);
     }
+}
+
+static void colorize(char *string, const char *color)
+{
+    int i, j, new_len, str_len, color_len, nocolor_len;
+
+    str_len     = strlen(string);
+    color_len   = strlen(color);
+    nocolor_len = strlen(NO_COLOR);
+
+    new_len = color_len + str_len + nocolor_len;
+    if (new_len > MAX_PATH_LEN - 1) {
+        fprintf(stderr, "Not enough space for color\n");
+        return;
+    }
+
+    string[new_len] = '\0';
+    for (i = new_len - 1, j = nocolor_len - 1; j >= 0; i--, j--)
+        string[i] = NO_COLOR[j];
+    for (j = str_len - 1; j >= 0; i--, j--)
+        string[i] = string[j];
+    for (j = color_len - 1; j >= 0; i--, j--)
+        string[i] = color[j];
+
+    assert(i == -1);
 }
