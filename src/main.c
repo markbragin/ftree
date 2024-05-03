@@ -1,6 +1,8 @@
 #include "argparser.h"
 #include "dynamic_array.h"
 #include "tree.h"
+#include <stdio.h>
+#include <unistd.h>
 
 int main(int argc, char **argv)
 {
@@ -9,13 +11,14 @@ int main(int argc, char **argv)
 
     dirnames = parse_args(argc, argv, &OPTIONS);
 
-    if (dirnames.size == 0) {
-        da_push(&dirnames, ".");
-    }
+    if (!isatty(fileno(stdout)))
+        OPTIONS.nocolor = true;
 
-    for (i = 0; i < dirnames.size; i++) {
+    if (dirnames.size == 0)
+        da_push(&dirnames, ".");
+
+    for (i = 0; i < dirnames.size; i++)
         print_tree(dirnames.items[i]);
-    }
 
     da_destroy(&dirnames);
     return 0;

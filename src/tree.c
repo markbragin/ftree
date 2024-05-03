@@ -78,8 +78,8 @@ static void dirwalk(const char *dirname, unsigned level)
     char fname[MAX_PATH_LEN]    = {0};
     int i, rc;
 
+    strcpy(fname, filename(dirname));
     if (!OPTIONS.nocolor) {
-        strcpy(fname, filename(dirname));
         colorize(fname, DIR_COLOR);
     }
 
@@ -109,8 +109,7 @@ static void dirwalk(const char *dirname, unsigned level)
         strcpy(fname, files.items[i]);
 
         /* Skip . and .. to avoid cycles */
-        if (strcmp(fname, ".") == 0
-            || strcmp(fname, "..") == 0)
+        if (strcmp(fname, ".") == 0 || strcmp(fname, "..") == 0)
             continue;
 
         /* Skip dotfiles if 'all' option is not set */
@@ -135,7 +134,7 @@ static void dirwalk(const char *dirname, unsigned level)
             if (OPTIONS.human)
                 bytes_to_human(filestat.st_size, size_str);
             else if (OPTIONS.size)
-                sprintf(size_str, "[%ld]", filestat.st_size);
+                sprintf(size_str, " [%ld]", filestat.st_size);
 
             /* Set color for executable */
             if (filestat.st_mode & S_IEXEC)
@@ -144,13 +143,12 @@ static void dirwalk(const char *dirname, unsigned level)
 #if !defined(_WIN32) && !defined(_WIN64)
             /* Set color for symlink and read the content of symlink */
             if (S_ISLNK(filestat.st_mode)) {
-                printf("Also there\n");
                 color = LINK_COLOR;
                 rc    = readlink(CUR_PATH, linkpath, MAX_PATH_LEN - 1);
                 if (rc != -1) {
                     linkpath[rc] = '\0';
                     rc           = stat(CUR_PATH, &filestat);
-                    if (rc == 0) {
+                    if (rc == 0 && !OPTIONS.nocolor) {
                         if (S_ISDIR(filestat.st_mode))
                             colorize(linkpath, DIR_COLOR);
                         else if (filestat.st_mode & S_IEXEC)
@@ -160,12 +158,13 @@ static void dirwalk(const char *dirname, unsigned level)
             }
 #endif
 
-            if (color != NULL)
+            if (!OPTIONS.nocolor && color != NULL)
                 colorize(fname, color);
 
-            printf("%s%s %s -> %s\n", CUR_PREFIX, fname,
-                   (OPTIONS.human || OPTIONS.size) ? size_str : "\b",
-                   (strlen(linkpath) != 0) ? linkpath : "\b\b\b\b    ");
+            printf("%s%s%s%s%s\n", CUR_PREFIX, fname,
+                   (OPTIONS.human || OPTIONS.size) ? size_str : "",
+                   (strlen(linkpath) != 0) ? " -> " : "",
+                   (strlen(linkpath) != 0) ? linkpath : "");
 
             /* Reset linkpath and fname */
             linkpath[0] = '\0';
@@ -292,13 +291,13 @@ static void bytes_to_human(long size, char *str)
     double dsize;
 
     if ((dsize = (double)size / 1024 / 1024 / 1024) > 1) {
-        sprintf(str, "[%.1fG]", dsize);
+        sprintf(str, " [%.1fG]", dsize);
     } else if ((dsize = (double)size / 1024 / 1024) > 1) {
-        sprintf(str, "[%.1fM]", dsize);
+        sprintf(str, " [%.1fM]", dsize);
     } else if ((dsize = (double)size / 1024) > 1) {
-        sprintf(str, "[%.1fK]", dsize);
+        sprintf(str, " [%.1fK]", dsize);
     } else {
-        sprintf(str, "[%ld]", size);
+        sprintf(str, " [%ld]", size);
     }
 }
 
