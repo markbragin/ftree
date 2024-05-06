@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,35 +6,49 @@
 
 #include "dynamic_array.h"
 
-static unsigned MIN_CAPACITY = 8;
+struct DynamicArray {
+    char **items;
+    size_t size;
+    size_t capacity;
+};
+
+static size_t MIN_CAPACITY = 32;
 
 static void resize(DynamicArray *da);
 static int cmp(const void *lhs, const void *rhs);
 
-DynamicArray da_create(unsigned capacity)
+DynamicArray *da_create(size_t capacity)
 {
-    unsigned nbytes;
-    DynamicArray da;
+    size_t nbytes;
+    DynamicArray *da;
 
-    da.capacity = capacity < MIN_CAPACITY ? MIN_CAPACITY : capacity;
-    nbytes = sizeof(char *) * da.capacity;
-    da.size = 0;
-    da.items = malloc(nbytes);
-
-    if (da.items == NULL) {
-        fprintf(stderr, "Can't allocate memory\n");
-        exit(6);
+    da = malloc(sizeof(DynamicArray));
+    if (!da) {
+        perror("Can't allocate memory");
+        abort();
     }
+
+    da->capacity = capacity < MIN_CAPACITY ? MIN_CAPACITY : capacity;
+    nbytes       = sizeof(char *) * da->capacity;
+    da->size     = 0;
+    da->items    = malloc(nbytes);
+
+    if (da->items == NULL) {
+        perror("Can't allocate memory");
+        abort();
+    }
+
     return da;
 }
 
 void da_destroy(DynamicArray *da)
 {
-    unsigned i;
+    size_t i;
 
     for (i = 0; i < da->size; i++)
         free(da->items[i]);
     free(da->items);
+    free(da);
 }
 
 void da_push(DynamicArray *da, const char *value)
@@ -53,13 +68,13 @@ void da_push(DynamicArray *da, const char *value)
 /* Doubles the array size */
 static void resize(DynamicArray *da)
 {
-    unsigned new_capacity;
+    size_t new_capacity;
     int i;
 
     i = 1;
     do {
         new_capacity = da->capacity * (1 + 1. / i);
-        da->items = realloc(da->items, new_capacity * sizeof(char *));
+        da->items    = realloc(da->items, new_capacity * sizeof(char *));
         i++;
     } while (da->items == NULL && i <= 4);
 
@@ -70,25 +85,14 @@ static void resize(DynamicArray *da)
     }
 }
 
-char *da_back(DynamicArray *da)
+size_t da_size(DynamicArray *da)
 {
-    return da->items[da->size - 1];
+    return da->size;
 }
 
-void da_pop(DynamicArray *da)
+char *da_at(DynamicArray *da, size_t i)
 {
-    if (da->size > 0)
-        da->size--;
-}
-
-int da_contains(DynamicArray *da, const char *value)
-{
-    unsigned i;
-
-    for (i = 0; i < da->size; i++)
-        if (strcmp(da->items[i], value) == 0)
-            return 1;
-    return 0;
+    return da->items[i];
 }
 
 void da_sort(DynamicArray *da)

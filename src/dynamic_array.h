@@ -6,22 +6,27 @@
 #ifndef _DYNAMIC_ARRAY_H_
 #define _DYNAMIC_ARRAY_H_
 
-typedef struct {
-    char **items;
-    unsigned size;
-    unsigned capacity;
-} DynamicArray;
+#include <stddef.h>
 
-DynamicArray da_create(unsigned capacity);
+typedef struct DynamicArray DynamicArray;
 
+/* Creates dynamic array on the heap. Caller must destroy it via da_destroy.
+ * Capacity can be set as 0 to use default value */
+DynamicArray *da_create(size_t capacity);
+
+/* Destroys array */
 void da_destroy(DynamicArray *da);
 
+/* Pushed char* into array. Creates copy on a heap */
 void da_push(DynamicArray *da, const char *value);
 
-char *da_back(DynamicArray *da);
+/* Returns size of array */
+size_t da_size(DynamicArray *da);
 
-int da_contains(DynamicArray *da, const char *value);
+/* Returns value at given index */
+char *da_at(DynamicArray *da, size_t i);
 
+/* Sorts values in ascending order */
 void da_sort(DynamicArray *da);
 
 #endif

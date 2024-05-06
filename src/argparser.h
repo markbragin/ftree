@@ -6,7 +6,7 @@
 
 /* Returns dynamic array of dirnames and sets options for the given pointer.
  * Caller must destroy it via da_destroy. */
-DynamicArray parse_args(int argc, char **argv, Options *opts);
+DynamicArray *parse_args(int argc, char **argv, Options *opts);
 
 /* Prints usage to stdout */
 void usage(void);

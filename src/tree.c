@@ -71,7 +71,7 @@ static void dirwalk(const char *dirname, unsigned level)
     DIR *dirp;
     struct dirent *dir;
     struct stat filestat;
-    DynamicArray files;
+    DynamicArray *files;
     const char *color;
     char size_str[32]           = {0};
     char linkpath[MAX_PATH_LEN] = {0};
@@ -100,13 +100,13 @@ static void dirwalk(const char *dirname, unsigned level)
     /* Read all filenames and sort them */
     files = da_create(0);
     while ((dir = readdir(dirp)))
-        da_push(&files, dir->d_name);
-    da_sort(&files);
+        da_push(files, dir->d_name);
+    da_sort(files);
 
     /* Print every filename */
-    for (i = 0; i < files.size; i++) {
+    for (i = 0; i < da_size(files); i++) {
         color = NULL;
-        strcpy(fname, files.items[i]);
+        strcpy(fname, da_at(files, i));
 
         /* Skip . and .. to avoid cycles */
         if (strcmp(fname, ".") == 0 || strcmp(fname, "..") == 0)
@@ -117,7 +117,7 @@ static void dirwalk(const char *dirname, unsigned level)
             continue;
 
         append_filename(fname);
-        append_prefix(i == files.size - 1, OPTIONS.ascii);
+        append_prefix(i == da_size(files) - 1, OPTIONS.ascii);
 
         /* No symlinks in windows */
 #if defined(_WIN32) || defined(_WIN64)
@@ -174,7 +174,7 @@ static void dirwalk(const char *dirname, unsigned level)
         remove_prefix();
     }
     closedir(dirp);
-    da_destroy(&files);
+    da_destroy(files);
 }
 
 static void remove_filename(void)
@@ -189,7 +189,7 @@ static void remove_filename(void)
 
 static void append_filename(const char *filename)
 {
-    unsigned len;
+    size_t len;
 
     len = strlen(CUR_PATH);
     if (len + strlen(filename) + 2 > MAX_PATH_LEN) {
@@ -215,7 +215,7 @@ const char *filename(const char *path)
 /* Boilerplace. Fix it later */
 static void append_prefix(bool end, bool ascii)
 {
-    unsigned len;
+    size_t len;
 
     len = strlen(CUR_PREFIX);
     if (ascii) {
@@ -253,7 +253,7 @@ static void append_prefix(bool end, bool ascii)
 
 static void remove_prefix(void)
 {
-    unsigned len;
+    size_t len;
 
     len = strlen(CUR_PREFIX);
     if (len <= 0)
@@ -277,7 +277,7 @@ static void remove_prefix(void)
 
 static bool end_with(const char *str, const char *substr)
 {
-    unsigned len, sublen;
+    size_t len, sublen;
 
     len    = strlen(str);
     sublen = strlen(substr);

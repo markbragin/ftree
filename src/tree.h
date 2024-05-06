@@ -2,6 +2,7 @@
 #define _TREE_H_
 
 #include "bool.h"
+
 #define MAX_PATH_LEN 8192
 
 /* Struct for holding given options */

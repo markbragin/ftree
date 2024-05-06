@@ -7,10 +7,10 @@
 #include "dynamic_array.h"
 #include "tree.h"
 
-DynamicArray parse_args(int argc, char **argv, Options *opts)
+DynamicArray *parse_args(int argc, char **argv, Options *opts)
 {
     int i;
-    DynamicArray dirnames;
+    DynamicArray *dirnames;
 
     dirnames = da_create(0);
 
@@ -37,7 +37,7 @@ DynamicArray parse_args(int argc, char **argv, Options *opts)
             usage();
             exit(0);
         } else if (argv[i][0] != '-') {
-            da_push(&dirnames, argv[i]);
+            da_push(dirnames, argv[i]);
         }
     }
     return dirnames;
