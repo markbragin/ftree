@@ -33,19 +33,21 @@ OPTIONS:
 
 `make clean && make release`
 
-### Using `cmake` (+make)
+### Using `cmake`
 
 ```
 mkdir build
 cd build
-cmake -DCMAKE_BUILD_TYPE=Release -G "MinGW Makefiles" ..
-make
+cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake --build .
+cd ..
 ```
 
-binary will appear in the root directory of the project.
+Binary will be located in the root directory of the project.
 
+You can use different generator with option `-G`:
 
-You can use different generator with option `-G`.
+`cmake -DCMAKE_BUILD_TYPE=Release -G "MinGW Makefiles" ..`
 
 ### Just compiler
 

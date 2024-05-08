@@ -13,6 +13,12 @@ add_executable(${PROJECT_NAME}
 	src/argparser.c
 )
 
+target_compile_options(
+    ${PROJECT_NAME}
+    PUBLIC
+    -D_DEFAULT_SOURCE
+)
+
 target_include_directories(${PROJECT_NAME}
 	PRIVATE ${PROJECT_SOURCE_DIR}/src)
 
